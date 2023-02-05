@@ -1,17 +1,26 @@
 ﻿#if UNITY_WEBGL && !UNITY_EDITOR
 using System.Runtime.InteropServices;
 using System.Text;
+using System;
 
 public class DragDropHandlerWebGL : IDragDropHandler
 {
     [DllImport("__Internal")]
-    private static extern void RegisterDragDrop(string unityCanvasId, string controllerName);
+    private static extern void RegisterDragDrop(string controllerName);
 
     [DllImport("__Internal")]
-    private static extern void UnregisterDragDrop(string unityCanvasId);
+    private static extern void UnregisterDragDrop();
+
+    [DllImport("__Internal")]
+    private static extern IntPtr GetFileData(string fileName);
+
+    [DllImport("__Internal")]
+    private static extern int GetFileDataLength(string fileName);
+
+    [DllImport("__Internal")]
+    private static extern void FreeFileData(string fileName);
 
     private DragDropController _controller;
-    private string _canvasId = "#canvas";
 
     public void Bind(DragDropController controller)
     {
@@ -20,12 +29,12 @@ public class DragDropHandlerWebGL : IDragDropHandler
 
     public void Hook()
     {
-        RegisterDragDrop(_canvasId, _controller.name);
+        RegisterDragDrop(_controller.name);
     }
 
     public void Unhook()
     {
-        UnregisterDragDrop(_canvasId);
+        UnregisterDragDrop();
     }
 
     private struct WebGLData
@@ -33,7 +42,7 @@ public class DragDropHandlerWebGL : IDragDropHandler
         public string FileName;
         public int X;
         public int Y;
-        public string Blob;
+        public byte[] Bytes;
     }
 
     private bool GetData(string data, ref WebGLData output)
@@ -52,7 +61,11 @@ public class DragDropHandlerWebGL : IDragDropHandler
 
         if (bits.Length == 4)
         {
-            output.Blob = bits[3];
+            int length = GetFileDataLength(output.FileName);
+            IntPtr ptr = GetFileData(output.FileName);
+            output.Bytes = new byte[length];
+            Marshal.Copy(ptr, output.Bytes, 0, length);
+            FreeFileData(output.FileName);
         }
 
         return true;
@@ -119,7 +132,7 @@ public class DragDropHandlerWebGL : IDragDropHandler
             return;
         }
 
-        _controller.OnDroppedData(webData.FileName, webData.X, webData.Y, Encoding.UTF8.GetBytes(webData.Blob));
+        _controller.OnDroppedData(webData.FileName, webData.X, webData.Y, webData.Bytes);
     }
 }
 #endif

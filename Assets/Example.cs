@@ -1,9 +1,16 @@
-﻿using JetBrains.Annotations;
+﻿using System;
+using System.IO;
+using System.Text;
+using JetBrains.Annotations;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class Example : MonoBehaviour
 {
     private DragDropController _dragDropController;
+
+    public Text FileNameLabel;
+    public Text FileContentsLabel;
 
     [UsedImplicitly]
 	private void Awake()
@@ -21,7 +28,7 @@ public class Example : MonoBehaviour
         _dragDropController.OnDroppedData += OnDropData;
 	}
 	
-	[UsedImplicitly
+	[UsedImplicitly]
 	private void OnDestroy()
 	{
 		if (_dragDropController == null)
@@ -64,6 +71,13 @@ public class Example : MonoBehaviour
     private void OnDropData(string fileName, int x, int y, byte[] data)
     {
         Debug.Log("OnDropData - File name: " + fileName);
-        Debug.Log("Data: " + System.Text.Encoding.UTF8.GetString(data));
+        Debug.Log("X: " + x + ", Y: " + y);
+
+        FileNameLabel.text = fileName;
+        if (Path.GetExtension(fileName).Equals(".txt", StringComparison.OrdinalIgnoreCase))
+        {
+            string textData = Encoding.UTF8.GetString(data);
+            FileContentsLabel.text = textData;
+        }
     }
 }

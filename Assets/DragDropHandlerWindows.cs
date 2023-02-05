@@ -1,5 +1,6 @@
 ﻿#if UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
 using System;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -39,12 +40,15 @@ public class DragDropHandlerWindows : IDragDropHandler
         _controller = controller;
         _windowHandle = GetForegroundWindow();
     }
-    
+
     public void Hook()
     {
         DragAcceptFiles(_windowHandle, true);
         _oldWndProc = SetWindowProc(_windowHandle, WndProc);
-        _oldWndProcDelegate = (WndProcDelegate)Marshal.GetDelegateForFunctionPointer(_oldWndProc, typeof(WndProcDelegate));
+        if (_oldWndProc != IntPtr.Zero)
+        {
+            _oldWndProcDelegate = (WndProcDelegate)Marshal.GetDelegateForFunctionPointer(_oldWndProc, typeof(WndProcDelegate));
+        }
     }
 
     public void Unhook()
@@ -75,12 +79,19 @@ public class DragDropHandlerWindows : IDragDropHandler
             {
                 int size = DragQueryFile(wparam, i, null, 0);
 
-                StringBuilder fileName = new StringBuilder(size + 1);
-                DragQueryFile(wparam, i, fileName, MaxPath);
+                StringBuilder fileNameBuilder = new StringBuilder(size + 1);
+                DragQueryFile(wparam, i, fileNameBuilder, MaxPath);
+                string fileName = fileNameBuilder.ToString();
 
                 if (_controller.OnDropped != null)
                 {
-                    _controller.OnDropped(fileName.ToString(), 0, 0);
+                    _controller.OnDropped(fileName, 0, 0);
+                }
+
+                if (_controller.OnDroppedData != null)
+                {
+                    byte[] data = File.ReadAllBytes(fileName);
+                    _controller.OnDroppedData(fileName, 0, 0, data);
                 }
             }
 

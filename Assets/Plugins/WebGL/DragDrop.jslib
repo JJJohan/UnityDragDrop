@@ -1,11 +1,10 @@
 ﻿mergeInto(LibraryManager.library, 
 {
-	RegisterDragDrop : function(canvasIdPtr, controllerNamePtr)
+	RegisterDragDrop : function(controllerNamePtr)
 	{			
-		var canvasId = Pointer_stringify(canvasIdPtr);
-		var controller = Pointer_stringify(controllerNamePtr);
+		var controller = UTF8ToString(controllerNamePtr);
 		
-		var canvas = document.getElementById(canvasId);
+		var canvas = GetCanvasElement();
 		if (canvas !== undefined)
 		{		
 			function iterateFiles(ev, eventType, grabData)
@@ -44,11 +43,12 @@
 				if (grabData)
 				{
 					var reader = new FileReader();
-					reader.readAsDataURL(file);
 					reader.onload = function() 
 					{
-						SendMessage(controller, 'WebGL_OnDropData', file.name + '|' + x + '|' + y + '|' + reader.result);
+						(window.filedata = window.filedata ? window.filedata : {})[file.name] = reader.result;
+						SendMessage(controller, 'WebGL_OnDropData', file.name + '|' + x + '|' + y + '|true');
 					};
+					reader.readAsArrayBuffer(file);
 				}
 				else
 				{
@@ -81,16 +81,42 @@
 		}
 	},
   
-	UnregisterDragDrop : function(canvasIdPtr)
-	{
-		var canvasId = Pointer_stringify(canvasIdPtr);
-		
-		var canvas = document.getElementById(canvasId);
+	UnregisterDragDrop : function()
+	{		
+		var canvas = GetCanvasElement();
 		if (canvas !== undefined)
 		{
 			canvas.ondragstart = null;
 			canvas.ondragover = null;
 			canvas.ondrop = null;
 		}
-	}
+	},
+	
+	GetFileData: function(fileNamePtr) 
+	{
+     var filename = UTF8ToString(fileNamePtr);
+     var filedata = window.filedata[filename];
+     var ptr = (window.fileptr = window.fileptr ? window.fileptr : {})[filename] = _malloc(filedata.byteLength);
+     var dataHeap = new Uint8Array(HEAPU8.buffer, ptr, filedata.byteLength);
+     dataHeap.set(new Uint8Array(filedata));
+     return ptr;
+   },
+   
+   GetFileDataLength: function(fileNamePtr) 
+   {
+     var filename = UTF8ToString(fileNamePtr);
+     console.log("GetFileDataLength");
+     console.log(filename);
+     console.log(window);
+     console.log(window.filedata);
+     return window.filedata[filename].byteLength;
+   },
+   
+   FreeFileData: function(fileNamePtr) 
+   {
+     var filename = UTF8ToString(fileNamePtr);
+     _free(window.fileptr[filename]);
+     delete window.fileptr[filename];
+     delete window.filedata[filename];
+   }
 });
